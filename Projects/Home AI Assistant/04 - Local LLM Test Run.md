@@ -5,7 +5,7 @@ date: 2026-10-02
 status: testing
 model: qwen3:14b
 runtime: Ollama
-target-hardware: "[[Beelink SER9 MAX]]"
+target-hardware: "[[03 - Hardware|Beelink SER9 MAX]]"
 tags:
   - home-ai
   - llm/local
@@ -19,7 +19,7 @@ aliases:
 # Local LLM Test Run
 
 > [!abstract] Goal
-> Run a model on the current PC (==18 GB free==) to judge model size and speed **before** buying [[Beelink SER9 MAX]] (32 GB RAM, Linux).
+> Run a model on the current PC (==18 GB free==) to judge model size and speed **before** buying [[03 - Hardware|Beelink SER9 MAX]] (32 GB RAM, Linux).
 
 ## Model choice
 
@@ -114,9 +114,12 @@ Pattern name: **RAG** (retrieval-augmented generation).
 
 ## Related
 - [[Home AI Assistant]]
-- [[Beelink SER9 MAX]]
-- [[RAG]]
+- [[03 - Hardware|Beelink SER9 MAX]]
+- [[02 - Architecture|RAG]]
 
 %% Next: fill results table, then decide model size and hardware. %%
 
 [^1]: Roughly half the speed of an 8B/9B model on the same CPU.
+
+---
+← [[03 - Hardware]] | [[Home AI Assistant]] | [[05 - Quick Revision]] →
