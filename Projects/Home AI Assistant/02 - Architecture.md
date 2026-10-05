@@ -34,45 +34,58 @@ aliases:
 - **Limit:** Alexa, email and chat pass through outside servers. For sensitive files, send a link reachable over Tailscale, not the attachment
 
 ## How the pieces connect
-```mermaid
-flowchart LR
-    subgraph IN[Entry points]
-      A[Alexa]
-      C[Chat app via Tailscale]
-      G[Gmail - selected labels]
-    end
-    subgraph P[Home perimeter - no egress]
-      O[Agent / orchestrator<br/>6-8 tools]
-      L[LLM server<br/>no network]
-      D[(Docs + Vector DB + SQLite)]
-      H[Home Assistant]
-      F[Background jobs<br/>output files]
-    end
-    N[Notifier<br/>allowlist only]
-    A --> O
-    C --> O
-    G --> D
-    O <--> L
-    O <--> D
-    O --> H
-    F --> O
-    O --> N
-    N --> ME[Your email / chat]
-```
+![[Architecture.excalidraw]]
+
+> [!note]- Text version (Mermaid)
+> ```mermaid
+> flowchart LR
+>     subgraph IN[Entry points]
+>       A[Alexa]
+>       C[Chat app via Tailscale]
+>       G[Gmail - selected labels]
+>     end
+>     subgraph P[Home perimeter - no egress]
+>       O[Agent / orchestrator<br/>6-8 tools]
+>       L[LLM server<br/>no network]
+>       D[(Docs + Postgres/pgvector)]
+>       H[Home Assistant]
+>       F[Background jobs<br/>output files]
+>     end
+>     N[Notifier<br/>allowlist only]
+>     A --> O
+>     C --> O
+>     G --> D
+>     O <--> L
+>     O <--> D
+>     O --> H
+>     F --> O
+>     O --> N
+>     N --> ME[Your email / chat]
+> ```
 
 ## Where data lives (RAG)
 > [!important] The model stores nothing
 > Your data stays outside the model and is fed in with each question. This is **RAG** (retrieval-augmented generation). Swap the model later and all the data carries over.
 
-| What | Where |
-|---|---|
-| Model file | Disk, loaded into RAM when used |
-| Original docs, emails, attachments | Folder on the 2nd SSD |
-| Text chunks + embeddings | Vector DB (Chroma / pgvector) |
-| Dates, reminders, tasks | SQLite |
-| Precomputed answers | Output files from background jobs |
+### The three artefacts
+| # | Artefact | What's in it | Where | Changes? | Back up? |
+|---|---|---|---|---|---|
+| 1 | **Model** | LLM weights + embedding model | Disk, loaded into RAM | Only when you swap it | No, re-download |
+| 2 | **Documents** | Original files, emails, attachments | Folder on 2nd SSD (or MinIO) | Grows | **Yes** |
+| 3 | **Memory & index** | Vector index, preferences, conversation summaries, tasks, reminders | Postgres + pgvector | Grows with every interaction | **Yes** |
 
-**On a question:** embed the question → search the vector DB → take the top chunks → send question + chunks to the LLM → answer.
+> [!tip] Rule of thumb
+> Back up **2 and 3** and you can rebuild everything else on any machine.
+
+### Memory & index in detail
+- **Format:** Postgres tables. Preferences, summaries, tasks and document chunks are plain text; each chunk also has an embedding vector (a list of numbers)
+- **Read and edit it yourself:** yes, with SQL or a GUI like DBeaver or pgAdmin. Text is editable; vectors aren't readable, so re-embed any row whose text you change
+- **Change the LLM:** everything carries over untouched. The model only reads the retrieved text
+- **Change the embedding model:** old vectors stop matching. Run a one-off job to re-embed the stored text, which is why the source text is always kept next to its vector
+- **Portability:** `pg_dump` or a JSONL export moves it anywhere
+
+### On a question
+Embed the question → search the vector index → take the top chunks → send question + chunks + short memory summary to the LLM → answer. Typically a few thousand tokens, not the whole library.
 
 ## Model size ladder
 | Size | Handles | Example |
